@@ -92,7 +92,7 @@ def get_playlist_data(token, playlistID):
 
 def compare_playlists(playlist1Data, playlist2Data):
     
-    # Compares set of data (track, artist, etc) from two playlists and returns a similarity score using a Jaccard index
+    # Compares set of data (track, artist, etc) from two playlists and generate similarity scores for each
     # Returns a float representing the similarity percentage
 
     set1 = set(playlist1Data)
@@ -112,5 +112,10 @@ def get_similarity_scores(playlist1Data, playlist2Data):
 
     # Sort through specific data types in both playlist tracks and get similarity scores for each using a Jaccard index
 
+
+
+    for item in playlist1Data:
+        
     
+    track_similarity = compare_playlists(playlist1Data[])
 
