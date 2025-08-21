@@ -112,10 +112,64 @@ def get_similarity_scores(playlist1Data, playlist2Data):
 
     # Sort through specific data types in both playlist tracks and get similarity scores for each using a Jaccard index
 
+    playlist1_trackIDList = []
+    playlist2_trackIDList = []
 
+    playlist1_popularityList = []
+    playlist2_popularityList = []
+
+    playlist1_releaseYearList = []
+    playlist2_releaseYearList = []
+
+    playlist1_artistIDList = []
+    playlist2_artistIDList = []
 
     for item in playlist1Data:
-        
-    
-    track_similarity = compare_playlists(playlist1Data[])
+        playlist1_trackIDList.append(item['track_id'])
+        playlist1_popularityList.append(item['popularity'])
+        playlist1_releaseYearList.append(item['release_year'])
+        for artist in item['artist_ids']: # Some tracks have multiple artists that need to be split up
+            playlist1_artistIDList.append(artist)
+
+    for item in playlist2Data:
+        playlist2_trackIDList.append(item['track_id'])
+        playlist2_popularityList.append(item['popularity'])
+        playlist2_releaseYearList.append(item['release_year'])
+        for artist in item['artist_ids']: # Some tracks have multiple artists that need to be split up
+            playlist2_artistIDList.append(artist)
+
+    # Popularity similarity calculated using normalized difference of average popularities
+    avg_pop1 = sum(playlist1_popularityList) / len(playlist1_popularityList)
+    avg_pop2 = sum(playlist2_popularityList) / len(playlist2_popularityList)
+    pop_diff = abs(avg_pop1 - avg_pop2)
+
+    # Year similarity calculated using average difference between playlists in comparision to total year range between playlists (Ex: 2005 vs 2006 has a higher similarity score the greater the difference between the oldest song and newest song)
+    min_year = min(min(playlist1_releaseYearList), min(playlist2_releaseYearList))
+    max_year = max(max(playlist1_releaseYearList), max(playlist2_releaseYearList))
+    year_range = max_year - min_year
+    if year_range == 0:
+        yearSimilarity = 1.0
+    avg_year1 = sum(playlist1_releaseYearList) / len(playlist1_releaseYearList)
+    avg_year2 = sum(playlist2_releaseYearList) / len(playlist2_releaseYearList)
+    year_diff = abs(avg_year1 - avg_year2)
+
+    trackSimilarity = compare_playlists(playlist1_trackIDList, playlist2_trackIDList)
+    artistSimilarity = compare_playlists(playlist1_artistIDList, playlist2_artistIDList)
+    popularitySimilarity = (1 - (pop_diff / 100)) * 100
+    yearSimilarity = (1 - (year_diff / year_range)) * 100
+
+    scores = {
+        "Tracks" : trackSimilarity,
+        "Artists" : artistSimilarity,
+        "Popularity" : popularitySimilarity,
+        "Release Year" : yearSimilarity
+    }
+
+    return scores
+
+token = get_token()
+playlist1Data = get_playlist_data(token, "37c9gzsiHgEo8xcYeRhOcw") #hamilton
+playlist2Data = get_playlist_data(token, "2dfRb8iX2N30YUwXZjHjnA") #my playlist
+print(get_similarity_scores(playlist1Data, playlist2Data))
+
 
