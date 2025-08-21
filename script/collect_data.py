@@ -7,8 +7,8 @@ import time
 
 load_dotenv()
 
-CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
-CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
+CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
 
 def get_token():
@@ -42,44 +42,61 @@ def get_auth_header(token):
 
     return {"Authorization": "Bearer " + token}
 
-def get_tracks_from_playlist(token, playlistID):
+def get_playlist_data(token, playlistID):
 
-    # Fetches all track IDs from a given playlist ID
-    # Returns a list of all track IDs from the specified playlist
+    # Fetches detailed data for all tracks in a given playlist
+    # Returns a list of dictionaries, where each dictionary represents a track and contains its ID, popularity, release year, and artist IDs
 
+    fields_query = "items(track(id,popularity,album(release_date),artists(id))),next"
     url = f"https://api.spotify.com/v1/playlists/{playlistID}/tracks"
     headers = get_auth_header(token)
     
-    track_ids = []
+    playlist_items = []
     while url:
-        result = get(url, headers=headers, params={"limit": 100, "fields": "items(track(id)),next"})
-        json_result = json.loads(result.content)
-    
-        for item in json_result['items']:
-            track_ids.append(item['track']['id'])
+        try:
+            result = get(url, headers=headers, params={"limit": 100, "fields": fields_query})
+            result.raise_for_status()
+            json_result = result.json()
         
-        url = json_result.get('next') # Continues collecting track IDs from playlist if over 100 track limit for one API call
+            # Processes each item from the current page of results
+            for item in json_result.get('items', []):
+                track = item.get('track')
+                if not track or not track.get('id'):
+                    continue # Skip if the track is null or has no ID
+                
+                # Extracts the year from the release_date string (e.g., '2024-08-21' -> 2024)
+                release_year = 0
+                if track.get('album') and track['album'].get('release_date'):
+                    release_year = int(track['album']['release_date'].split('-')[0])
 
-        if url:
-            time.sleep(0.1) # Avoids API rate limit
-    
-    return track_ids
+                # Extracts a list of artist IDs from the list of artist objects
+                artist_ids = [artist['id'] for artist in track.get('artists', []) if artist.get('id')]
 
-def get_playlist_information(playlistID):
+                playlist_items.append({
+                    "track_id": track['id'],
+                    "popularity": track.get('popularity', 0),
+                    "release_year": release_year,
+                    "artist_ids": artist_ids
+                })
+            
+            # Get the URL for the next page
+            url = json_result.get('next')
+            if url:
+                time.sleep(0.1) # Avoid API rate limit
+                
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            break
     
-    # Condensed function to get track IDs from playlist in one function call
-    # Returns list of track IDs from playlist
-    
-    token = get_token()
-    return get_tracks_from_playlist(token, playlistID)
+    return playlist_items
 
-def compare_playlists(trackIDList1, trackIDList2):
+def compare_playlists(playlist1Data, playlist2Data):
     
-    # Compares the tracks from two playlists and returns a similarity score using a Jaccard index
+    # Compares set of data (track, artist, etc) from two playlists and returns a similarity score using a Jaccard index
     # Returns a float representing the similarity percentage
 
-    set1 = set(trackIDList1)
-    set2 = set(trackIDList2)
+    set1 = set(playlist1Data)
+    set2 = set(playlist2Data)
 
     intersection = set1.intersection(set2)
     union = set1.union(set2)
@@ -91,4 +108,9 @@ def compare_playlists(trackIDList1, trackIDList2):
 
     return similarity * 100 # Return similarity as percentage
 
-print(get_playlist_information("5EXeiN2jugC9vnxx2WpxuP"))
+def get_similarity_scores(playlist1Data, playlist2Data):
+
+    # Sort through specific data types in both playlist tracks and get similarity scores for each using a Jaccard index
+
+    
+
