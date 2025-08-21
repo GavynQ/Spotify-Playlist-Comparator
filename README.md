@@ -1,0 +1,1 @@
+A Python application that analyzes and compares two Spotify playlists, calculating a similarity score based on overlapping tracks, artists, and other musical attributes. This script interfaces directly with the Spotify Web API to fetch and process playlist data.
