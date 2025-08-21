@@ -34,7 +34,12 @@ def get_tracks_from_playlist(token, playlistID):
 
     result = get(url, headers=headers)
     json_result = json.loads(result.content)
-    return json_result
+    
+    track_ids = []
+    for item in json_result['items']:
+        track_ids.append(item['track']['id'])
+    
+    return track_ids
 
 token = get_token()
 trackInformation = get_tracks_from_playlist(token, "5EXeiN2jugC9vnxx2WpxuP")
