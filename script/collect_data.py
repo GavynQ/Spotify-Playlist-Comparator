@@ -2,38 +2,50 @@ from dotenv import load_dotenv
 import os
 import base64
 import json
-from requests import post, get
+from requests import post, get, exceptions
 import time
 
-load_dotenv()
-
+# Load environment variables for credentials
+load_dotenv() 
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
+SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 
 def get_token():
     
     # Obtains an access token from the Spotify API using the Client Credentials Flow
     # Returns a string with a Spotify API access token
 
+    # Exit program if credentials not loaded properly
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise ValueError("Spotify client ID or secret not found in environment variables.")
+    
     # Combine client id and client secret and encode into base64 for API use 
     auth_string = CLIENT_ID + ":" + CLIENT_SECRET
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
 
-    url = "https://accounts.spotify.com/api/token" # Spotify Endpoint for token access
+    url = "https://accounts.spotify.com/api/token" # Endpoint for access tokens
     headers = {
         "Authorization": "Basic " + auth_base64,
         "Content-Type": "application/x-www-form-urlencoded"
     }
     data = {"grant_type": "client_credentials"}
 
-    # Makes post request and parses the JSON response
-    result = post(url, headers=headers, data=data)
-    json_result = json.loads(result.content)
-    
-    token = json_result["access_token"]
-    return token
+    try:
+        # Makes post request and parses the JSON response
+        result = post(url, headers=headers, data=data)
+        result.raise_for_status() # Exit program if HTTP request not successful
+        json_result = json.loads(result.content)
+        token = json_result["access_token"]
+        return token
+    except exceptions.RequestException as e:
+        print(f"Error requesting Spotify token: {e}")
+        raise # Prevent script from continuing to run
+    except KeyError:
+        print("Error: 'access_token' not found in the response from Spotify")
+        raise # Prevent script from continuing to run
 
 def get_auth_header(token):
     
@@ -168,8 +180,8 @@ def get_similarity_scores(playlist1Data, playlist2Data):
     return scores
 
 token = get_token()
-playlist1Data = get_playlist_data(token, "37c9gzsiHgEo8xcYeRhOcw") #hamilton
-playlist2Data = get_playlist_data(token, "2dfRb8iX2N30YUwXZjHjnA") #my playlist
+playlist1Data = get_playlist_data(token, "37c9gzsiHgEo8xcYeRhOcw") # hamilton
+playlist2Data = get_playlist_data(token, "2dfRb8iX2N30YUwXZjHjnA") # my playlist
 print(get_similarity_scores(playlist1Data, playlist2Data))
 
 
