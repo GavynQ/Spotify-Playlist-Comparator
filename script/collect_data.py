@@ -49,14 +49,14 @@ def get_token():
 
 def get_auth_header(token):
     
-    # Constructs the authorization header required for Spotify API requests
+    # Constructs the authorization header required for Spotify API requests using the API token
     # Returns a dictionary containing the formatted header
 
     return {"Authorization": "Bearer " + token}
 
 def get_playlist_data(token, playlistID):
 
-    # Fetches detailed data for all tracks in a given playlist
+    # Fetches detailed data for all tracks in a given Spotify playlist
     # Returns a list of dictionaries, where each dictionary represents a track and contains its ID, popularity, release year, and artist IDs
 
     fields_query = "items(track(id,popularity,album(release_date),artists(id))),next"
@@ -70,19 +70,22 @@ def get_playlist_data(token, playlistID):
             result.raise_for_status()
             json_result = result.json()
         
-            # Processes each item from the current page of results
+            # Processes each item from the current batch of results
             for item in json_result.get('items', []):
                 track = item.get('track')
                 if not track or not track.get('id'):
                     continue # Skip if the track is null or has no ID
                 
-                # Extracts the year from the release_date string (e.g., '2024-08-21' -> 2024)
+                # Extracts the year from the release_date string (ex: '2024-08-21' -> 2024)
                 release_year = 0
                 if track.get('album') and track['album'].get('release_date'):
                     release_year = int(track['album']['release_date'].split('-')[0])
 
                 # Extracts a list of artist IDs from the list of artist objects
-                artist_ids = [artist['id'] for artist in track.get('artists', []) if artist.get('id')]
+                artist_ids = [
+                    artist['id'] for artist in track.get('artists', []) 
+                    if artist.get('id')
+                    ]
 
                 playlist_items.append({
                     "track_id": track['id'],
@@ -96,16 +99,20 @@ def get_playlist_data(token, playlistID):
             if url:
                 time.sleep(0.1) # Avoid API rate limit
                 
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        except exceptions.RequestException as e:
+            print(f"An error occured while fetching playlist data: {e}")
+            break
+        except KeyError as e:
+            print(f"Unexpected data structure in API response: missing key {e}")
             break
     
     return playlist_items
 
-def compare_playlists(playlist1Data, playlist2Data):
+def calculate_jaccard_similarity(playlist1Data, playlist2Data):
     
-    # Compares set of data (track, artist, etc) from two playlists and generate similarity scores for each
-    # Returns a float representing the similarity percentage
+    # Calculates the Jaccard similarity between two sets of data
+    # The jaccard similarity is the size of the intersection divided by the size of the union of the two data sets
+    # Returns the jaccard similarity score as a percentage between 0.0 and 100.0
 
     set1 = set(playlist1Data)
     set2 = set(playlist2Data)
@@ -120,64 +127,65 @@ def compare_playlists(playlist1Data, playlist2Data):
 
     return similarity * 100 # Return similarity as percentage
 
-def get_similarity_scores(playlist1Data, playlist2Data):
+def get_similarity_scores(playlist1_data, playlist2_data):
 
-    # Sort through specific data types in both playlist tracks and get similarity scores for each using a Jaccard index
+    # Calculates similarity scores for tracks, artists, popularity, and release year
+    # Returns a dictionary with the similarity scores for each metric
 
-    playlist1_trackIDList = []
-    playlist2_trackIDList = []
+    # No similarity if there is a missing or invalid playlist
+    if not playlist1_data or not playlist2_data:
+        return {
+            "Tracks": 0.0,
+            "Artists": 0.0,
+            "Popularity": 0.0,
+            "Release Year": 0.0,
+        }
 
-    playlist1_popularityList = []
-    playlist2_popularityList = []
+    p1_track_ids = {item['track_id'] for item in playlist1_data}
+    p2_track_ids = {item['track_id'] for item in playlist2_data}
 
-    playlist1_releaseYearList = []
-    playlist2_releaseYearList = []
+    # Nested for loop to break up tracks that have multiple artists
+    p1_artist_ids = {artist for item in playlist1_data for artist in item['artist_ids']}
+    p2_artist_ids = {artist for item in playlist2_data for artist in item['artist_ids']}
 
-    playlist1_artistIDList = []
-    playlist2_artistIDList = []
+    p1_popularities = [item['popularity'] for item in playlist1_data]
+    p2_popularities = [item['popularity'] for item in playlist2_data]
 
-    for item in playlist1Data:
-        playlist1_trackIDList.append(item['track_id'])
-        playlist1_popularityList.append(item['popularity'])
-        playlist1_releaseYearList.append(item['release_year'])
-        for artist in item['artist_ids']: # Some tracks have multiple artists that need to be split up
-            playlist1_artistIDList.append(artist)
+    # Checks valid release date by checking if year > 0
+    p1_release_years = [item['release_year'] for item in playlist1_data if item['release_year'] > 0]
+    p2_release_years = [item['release_year'] for item in playlist2_data if item['release_year'] > 0]
 
-    for item in playlist2Data:
-        playlist2_trackIDList.append(item['track_id'])
-        playlist2_popularityList.append(item['popularity'])
-        playlist2_releaseYearList.append(item['release_year'])
-        for artist in item['artist_ids']: # Some tracks have multiple artists that need to be split up
-            playlist2_artistIDList.append(artist)
+    # Jaccard similarity calculations
+    track_similarity = calculate_jaccard_similarity(p1_track_ids, p2_track_ids)
+    artist_similarity = calculate_jaccard_similarity(p1_artist_ids, p2_artist_ids)
 
-    # Popularity similarity calculated using normalized difference of average popularities
-    avg_pop1 = sum(playlist1_popularityList) / len(playlist1_popularityList)
-    avg_pop2 = sum(playlist2_popularityList) / len(playlist2_popularityList)
+    # Popularity similarity
+    avg_pop1 = sum(p1_popularities) / len(p1_popularities)
+    avg_pop2 = sum(p2_popularities) / len(p2_popularities)
     pop_diff = abs(avg_pop1 - avg_pop2)
+    popularity_similarity = max(0.0, (1 - (pop_diff / 100)) * 100)
 
-    # Year similarity calculated using average difference between playlists in comparision to total year range between playlists (Ex: 2005 vs 2006 has a higher similarity score the greater the difference between the oldest song and newest song)
-    min_year = min(min(playlist1_releaseYearList), min(playlist2_releaseYearList))
-    max_year = max(max(playlist1_releaseYearList), max(playlist2_releaseYearList))
-    year_range = max_year - min_year
-    if year_range == 0:
-        yearSimilarity = 1.0
-    avg_year1 = sum(playlist1_releaseYearList) / len(playlist1_releaseYearList)
-    avg_year2 = sum(playlist2_releaseYearList) / len(playlist2_releaseYearList)
-    year_diff = abs(avg_year1 - avg_year2)
+    # Release year similarity
+    year_similarity = 0.0
+    if p1_release_years and p2_release_years:
+        all_years = p1_release_years + p2_release_years
+        min_year, max_year = min(all_years), max(all_years)
+        year_range = max_year - min_year
 
-    trackSimilarity = compare_playlists(playlist1_trackIDList, playlist2_trackIDList)
-    artistSimilarity = compare_playlists(playlist1_artistIDList, playlist2_artistIDList)
-    popularitySimilarity = (1 - (pop_diff / 100)) * 100
-    yearSimilarity = (1 - (year_diff / year_range)) * 100
+        if year_range == 0:
+            year_similarity = 100.0
+        else:
+            avg_year1 = sum(p1_release_years) / len(p1_release_years)
+            avg_year2 = sum(p2_release_years) / len(p2_release_years)
+            year_diff = abs(avg_year1 - avg_year2)
+            year_similarity = max(0.0, (1 - (year_diff / year_range)) * 100)
 
-    scores = {
-        "Tracks" : trackSimilarity,
-        "Artists" : artistSimilarity,
-        "Popularity" : popularitySimilarity,
-        "Release Year" : yearSimilarity
+    return {
+        "Tracks": round(track_similarity, 2),
+        "Artists": round(artist_similarity, 2),
+        "Popularity": round(popularity_similarity,2),
+        "Release Year": round(year_similarity, 2)
     }
-
-    return scores
 
 token = get_token()
 playlist1Data = get_playlist_data(token, "37c9gzsiHgEo8xcYeRhOcw") # hamilton
