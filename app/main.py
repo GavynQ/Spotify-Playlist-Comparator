@@ -1,3 +1,10 @@
-from script import collect_data
+import app.spotify_analyzer as spotify_analyzer
 
-print(collect_data.get_playlist_information("5EXeiN2jugC9vnxx2WpxuP"))
+def main():
+    token = spotify_analyzer.get_token()
+    playlist1Data = spotify_analyzer.get_playlist_data(token, "37c9gzsiHgEo8xcYeRhOcw") # hamilton
+    playlist2Data = spotify_analyzer.get_playlist_data(token, "2dfRb8iX2N30YUwXZjHjnA") # my playlist
+    print(spotify_analyzer.get_similarity_scores(playlist1Data, playlist2Data))
+
+if __name__ == "__main__":
+    main()
