@@ -183,7 +183,7 @@ def get_similarity_scores(playlist1_data, playlist2_data):
     return {
         "Tracks": round(track_similarity, 2),
         "Artists": round(artist_similarity, 2),
-        "Popularity": round(popularity_similarity,2),
+        "Popularity": round(popularity_similarity, 2),
         "Release Year": round(year_similarity, 2)
     }
 

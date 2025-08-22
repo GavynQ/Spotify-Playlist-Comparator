@@ -1,4 +1,4 @@
-import app.spotify_analyzer as spotify_analyzer
+import spotify_analyzer as spotify_analyzer
 
 def main():
     token = spotify_analyzer.get_token()
