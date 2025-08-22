@@ -37,7 +37,7 @@ def get_token():
         # Makes post request and parses the JSON response
         result = post(url, headers=headers, data=data)
         result.raise_for_status() # Exit program if HTTP request not successful
-        json_result = json.loads(result.content)
+        json_result = result.json()
         token = json_result["access_token"]
         return token
     except exceptions.RequestException as e:
@@ -160,8 +160,8 @@ def get_similarity_scores(playlist1_data, playlist2_data):
     artist_similarity = calculate_jaccard_similarity(p1_artist_ids, p2_artist_ids)
 
     # Popularity similarity
-    avg_pop1 = sum(p1_popularities) / len(p1_popularities)
-    avg_pop2 = sum(p2_popularities) / len(p2_popularities)
+    avg_pop1 = sum(p1_popularities) / len(p1_popularities) if p1_popularities else 0
+    avg_pop2 = sum(p2_popularities) / len(p2_popularities) if p2_popularities else 0
     pop_diff = abs(avg_pop1 - avg_pop2)
     popularity_similarity = max(0.0, (1 - (pop_diff / 100)) * 100)
 
