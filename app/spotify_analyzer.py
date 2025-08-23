@@ -4,6 +4,7 @@ import base64
 import json
 from requests import post, get, exceptions
 import time
+import statistics
 
 # Load environment variables for credentials
 load_dotenv() 
@@ -45,7 +46,7 @@ def get_token():
         raise # Prevent script from continuing to run
     except KeyError:
         print("Error: 'access_token' not found in the response from Spotify")
-        raise # Prevent script from continuing to run
+        raise
 
 def get_auth_header(token):
     
@@ -165,20 +166,26 @@ def get_similarity_scores(playlist1_data, playlist2_data):
     pop_diff = abs(avg_pop1 - avg_pop2)
     popularity_similarity = max(0.0, (1 - (pop_diff / 100)) * 100)
 
-    # Release year similarity
+    # Release year similarity using distribution comparisons
     year_similarity = 0.0
     if p1_release_years and p2_release_years:
-        all_years = p1_release_years + p2_release_years
-        min_year, max_year = min(all_years), max(all_years)
-        year_range = max_year - min_year
+        p1_avg_year = sum(p1_release_years) / len(p1_release_years)
+        p2_avg_year = sum(p2_release_years) / len(p2_release_years)
+        
+        p1_std_dev = statistics.stdev(p1_release_years)
+        p2_std_dev = statistics.stdev(p2_release_years)
+        
+        year_avg_diff = abs(p1_avg_year - p2_avg_year)
+        std_dev_diff = abs(p1_std_dev - p2_std_dev)
 
-        if year_range == 0:
-            year_similarity = 100.0
-        else:
-            avg_year1 = sum(p1_release_years) / len(p1_release_years)
-            avg_year2 = sum(p2_release_years) / len(p2_release_years)
-            year_diff = abs(avg_year1 - avg_year2)
-            year_similarity = max(0.0, (1 - (year_diff / year_range)) * 100)
+        normalization_factor_avg = 20
+        avg_year_similarity = max(0, (1 - (year_avg_diff / normalization_factor_avg))) * 100
+
+        normalization_factor_st_dev = 10
+        st_dev_similarity = max(0, (1 - (std_dev_diff / normalization_factor_st_dev))) * 100
+
+        # Accounts for closeness of avg years and the general release range of both playlists
+        year_similarity = (avg_year_similarity + st_dev_similarity) / 2
 
     return {
         "Tracks": round(track_similarity, 2),
