@@ -21,7 +21,7 @@ DEFAULT_WEIGHTS = {
     "--weight", "-w",
     multiple = True,
     type = str,
-    help = "Set a custom weightr for a score category. Format: 'Category=Value'"
+    help = "Set a custom weight for a score category. Format: 'Category=Value'"
             " (ex: -w 'Artists=0.6' sets artist weight to 60%). Can be used multiple times."
             " Available Categories: Tracks, Artists, Popularity, Release Year "
 )
