@@ -220,7 +220,7 @@ def get_similarity_scores(playlist1_data, playlist2_data):
         "Release Year": round(year_similarity, 2)
     }
 
-    def get_scores_from_token(playlist1_ID, playlist2_ID):
+def get_scores(playlist1_ID, playlist2_ID):
         token = get_token()
         playlist1_data = get_playlist_data(token, playlist1_ID)
         playlist2_data = get_playlist_data(token, playlist2_ID)
