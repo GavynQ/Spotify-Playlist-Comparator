@@ -160,32 +160,58 @@ def get_similarity_scores(playlist1_data, playlist2_data):
     track_similarity = calculate_jaccard_similarity(p1_track_ids, p2_track_ids)
     artist_similarity = calculate_jaccard_similarity(p1_artist_ids, p2_artist_ids)
 
-    # Popularity similarity
-    avg_pop1 = sum(p1_popularities) / len(p1_popularities) if p1_popularities else 0
-    avg_pop2 = sum(p2_popularities) / len(p2_popularities) if p2_popularities else 0
-    pop_diff = abs(avg_pop1 - avg_pop2)
-    popularity_similarity = max(0.0, (1 - (pop_diff / 100)) * 100)
+    # Popularity similarity using distribution comparisons
+    popularity_similarity = 0.0
+    # Ensure there are enough data points to calculate standard deviation
+    if len(p1_popularities) > 1 and len(p2_popularities) > 1:
+        p1_avg_pop = statistics.mean(p1_popularities)
+        p2_avg_pop = statistics.mean(p2_popularities)
+
+        p1_pop_stdev = statistics.stdev(p1_popularities)
+        p2_pop_stdev = statistics.stdev(p2_popularities)
+
+        pop_mean_diff = abs(p1_avg_pop - p2_avg_pop)
+        mean_norm_factor = 50
+        mean_similarity = max(0, (1 - (pop_mean_diff / mean_norm_factor))) * 100
+
+        pop_stdev_diff = abs(p1_pop_stdev - p2_pop_stdev)
+        stdev_norm_factor = 25
+        stdev_similarity = max(0, (1 - (pop_stdev_diff / stdev_norm_factor))) * 100
+        
+        popularity_similarity = (mean_similarity + stdev_similarity) / 2
+    
+    # Fallback for playlists with 0 or 1 song: use the original simple comparison
+    elif p1_popularities and p2_popularities:
+        p1_avg_pop = statistics.mean(p1_popularities)
+        p2_avg_pop = statistics.mean(p2_popularities)
+        pop_diff = abs(p1_avg_pop - p2_avg_pop)
+        # Using the simpler 0-100 normalization for the fallback
+        popularity_similarity = max(0.0, (1 - (pop_diff / 100)) * 100)
 
     # Release year similarity using distribution comparisons
     year_similarity = 0.0
-    if p1_release_years and p2_release_years:
-        p1_avg_year = sum(p1_release_years) / len(p1_release_years)
-        p2_avg_year = sum(p2_release_years) / len(p2_release_years)
-        
+    if len(p1_release_years) > 1 and len(p2_release_years) > 1:
+        p1_avg_year = statistics.mean(p1_release_years)
+        p2_avg_year = statistics.mean(p2_release_years)
         p1_std_dev = statistics.stdev(p1_release_years)
         p2_std_dev = statistics.stdev(p2_release_years)
         
         year_avg_diff = abs(p1_avg_year - p2_avg_year)
+        mean_similarity = max(0, (1 - (year_avg_diff / 20))) * 100
+
         std_dev_diff = abs(p1_std_dev - p2_std_dev)
+        st_dev_similarity = max(0, (1 - (std_dev_diff / 10))) * 100
 
-        normalization_factor_avg = 20
-        avg_year_similarity = max(0, (1 - (year_avg_diff / normalization_factor_avg))) * 100
-
-        normalization_factor_st_dev = 10
-        st_dev_similarity = max(0, (1 - (std_dev_diff / normalization_factor_st_dev))) * 100
-
-        # Accounts for closeness of avg years and the general release range of both playlists
-        year_similarity = (avg_year_similarity + st_dev_similarity) / 2
+        year_similarity = (mean_similarity + st_dev_similarity) / 2
+    
+    # Fallback for playlists with only one song
+    elif p1_release_years and p2_release_years:
+        p1_avg_year = statistics.mean(p1_release_years)
+        p2_avg_year = statistics.mean(p2_release_years)
+        year_avg_diff = abs(p1_avg_year - p2_avg_year)
+        
+        # Use a single, general normalization factor for the fallback
+        year_similarity = max(0, (1 - (year_avg_diff / 30))) * 100
 
     return {
         "Tracks": round(track_similarity, 2),
