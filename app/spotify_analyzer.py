@@ -209,7 +209,7 @@ def get_similarity_scores(playlist1_data, playlist2_data):
         p1_avg_year = statistics.mean(p1_release_years)
         p2_avg_year = statistics.mean(p2_release_years)
         year_avg_diff = abs(p1_avg_year - p2_avg_year)
-        
+
         # Use a single, general normalization factor for the fallback
         year_similarity = max(0, (1 - (year_avg_diff / 30))) * 100
 
@@ -219,5 +219,12 @@ def get_similarity_scores(playlist1_data, playlist2_data):
         "Popularity": round(popularity_similarity, 2),
         "Release Year": round(year_similarity, 2)
     }
+
+    def get_scores_from_token(playlist1_ID, playlist2_ID):
+        token = get_token()
+        playlist1_data = get_playlist_data(token, playlist1_ID)
+        playlist2_data = get_playlist_data(token, playlist2_ID)
+        scores = get_similarity_scores(playlist1_data, playlist2_data)
+        return scores
 
 
