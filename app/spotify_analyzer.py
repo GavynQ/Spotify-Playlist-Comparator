@@ -11,8 +11,6 @@ load_dotenv()
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
-SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-
 def get_token():
     
     # Obtains an access token from the Spotify API using the Client Credentials Flow
